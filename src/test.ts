@@ -14,6 +14,7 @@
 
 import Bindings, { stringOut, bufferIn } from './bindings.js';
 import { OpenFiles } from './fileSystem.js';
+import { createMemoryFileSystem } from './memfs-adapter.js';
 
 const EOL = '\n';
 
@@ -76,18 +77,11 @@ const textEncoder = new TextEncoder();
 runBtn.onclick = async () => {
   runBtn.disabled = true;
   try {
-    let rootHandle = await showDirectoryPicker();
-    let [sandbox, tmp] = await Promise.all([
-      rootHandle.getDirectoryHandle('sandbox'),
-      rootHandle.getDirectoryHandle('tmp').then(async tmp => {
-        let promises = [];
-        for await (let name of tmp.keys()) {
-          promises.push(tmp.removeEntry(name, { recursive: true }));
-        }
-        await Promise.all(promises);
-        return tmp;
-      })
-    ]);
+    // 使用内存文件系统替代真实文件系统
+    const rootFs = createMemoryFileSystem();
+    const sandbox = await rootFs.getDirectoryHandle('sandbox');
+    const tmp = await rootFs.getDirectoryHandle('tmp');
+    
     await Promise.allSettled(
       preparedTests.map(
         async ({ module, resultCell, stdin, stdout = '', exitCode = 0 }) => {

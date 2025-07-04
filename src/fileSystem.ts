@@ -13,13 +13,14 @@
 // limitations under the License.
 
 import { fd_t, OpenFlags, SystemError, E } from './bindings.js';
+import { MemfsFileHandle, MemfsDirectoryHandle } from './memfs-adapter.js';
 
-export type Handle = FileSystemFileHandle | FileSystemDirectoryHandle;
+export type Handle = MemfsFileHandle | MemfsDirectoryHandle;
 
 class OpenDirectory {
   constructor(
     public readonly path: string,
-    private readonly _handle: FileSystemDirectoryHandle
+    private readonly _handle: MemfsDirectoryHandle
   ) {}
 
   isFile!: false;
@@ -35,15 +36,15 @@ class OpenDirectory {
   private _currentIter:
     | {
         pos: number;
-        reverted: FileSystemHandle | undefined;
-        iter: AsyncIterableIterator<FileSystemHandle>;
+        reverted: Handle | undefined;
+        iter: AsyncIterableIterator<Handle>;
       }
     | undefined = undefined;
 
   getEntries(
     start = 0
-  ): AsyncIterableIterator<FileSystemHandle> & {
-    revert: (handle: FileSystemHandle) => void;
+  ): AsyncIterableIterator<Handle> & {
+    revert: (handle: Handle) => void;
   } {
     if (this._currentIter?.pos !== start) {
       // We're at incorrect position and will have to skip [start] items.
@@ -94,7 +95,7 @@ class OpenDirectory {
       // This allows to avoid having to restart the underlying
       // forward iterator over and over again just to find the required
       // position.
-      revert: (handle: FileSystemHandle) => {
+      revert: (handle: Handle) => {
         if (currentIter.reverted || currentIter.pos === 0) {
           throw new Error('Cannot revert a handle in the current state.');
         }
@@ -134,12 +135,12 @@ class OpenDirectory {
     path: string,
     mode: FileOrDir.File,
     openFlags?: OpenFlags
-  ): Promise<FileSystemFileHandle>;
+  ): Promise<MemfsFileHandle>;
   getFileOrDir(
     path: string,
     mode: FileOrDir.Dir,
     openFlags?: OpenFlags
-  ): Promise<FileSystemDirectoryHandle>;
+  ): Promise<MemfsDirectoryHandle>;
   getFileOrDir(
     path: string,
     mode: FileOrDir,
@@ -241,13 +242,13 @@ OpenDirectory.prototype.isFile = false;
 class OpenFile {
   constructor(
     public readonly path: string,
-    private readonly _handle: FileSystemFileHandle
+    private readonly _handle: MemfsFileHandle
   ) {}
 
   isFile!: true;
 
   public position = 0;
-  private _writer: FileSystemWritableFileStream | undefined = undefined;
+  private _writer: any | undefined = undefined;
 
   async getFile() {
     // TODO: do we really have to?
@@ -317,7 +318,7 @@ export class OpenFiles {
   private _nextFd = FIRST_PREOPEN_FD;
   private readonly _firstNonPreopenFd: fd_t;
 
-  constructor(preOpen: Record<string, FileSystemDirectoryHandle>) {
+  constructor(preOpen: Record<string, MemfsDirectoryHandle>) {
     for (let path in preOpen) {
       this._add(path, preOpen[path]);
     }
