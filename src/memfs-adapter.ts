@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { Volume } from 'memfs-browser';
+import type { IFs } from 'memfs-browser';
 import { SystemError, E } from './bindings.js';
 
 // 适配器类，将 memfs 的接口适配为类似 FileSystemHandle 的接口
 export class MemfsFileHandle {
   constructor(
-    private volume: Volume,
+    private volume: IFs,
     private path: string
   ) {}
 
